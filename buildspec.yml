@@ -1,0 +1,52 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Executing Install Phase
+      # used t0 resynchronize the package index from the sources. 
+      - apt-get update
+      # headless chrome and dependencies
+      - apt-get install -y fonts-liberation libasound2 libnspr4 libnss3 libx11-xcb1 xdg-utils libxss1 libappindicator3-1 libatk-bridge2.0-0 libgtk-3-0
+      # pulling down chrome to install
+      - wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+      - dpkg -i google-chrome*.deb
+    finally:
+      - echo Executed Install Phase
+  pre_build:
+    commands:
+      - echo Executing PRE Build Phase
+      # installing npm packages
+      - npm install
+    finally:
+      - echo Executed PRE Build Phase
+  build:
+    commands:
+      - echo Executing Build Phase
+      # building the solution
+      - npm run build:ci
+      # running unit tests
+      - npm run test:ci
+    finally:
+      - echo Executed Build Phase
+  post_build:
+    commands:
+      - echo Executing POST Build Phase
+      # using the s3 service to push the build artifacts into the bucket
+      # --acl 'public-read' > makes the files accessible from the web
+      # --delete > deletes the original contents of the bucket
+      - aws s3 sync ./dist/my-app s3://just-for-today-devops-production --acl 'public-read' --delete --exclude "*.txt" --include "*.html" --include "*.js" --include "*.css" --include "*.ico"
+    finally:
+      - echo Executed POST Build Phase
+
+# commenting out section as I will be using the aws cli to 
+# publish the artifacts directly to the s3 bucket hosting the web site. 
+# artifacts:
+#   files:
+#     - '**/*.html'
+#     - '**/*.js'
+#     - '**/*.ico'
+#     - '**/*.css'
+#   # exclude the folder apth 'my-app' 
+#   dicard-paths: yes
+#   base-directory: 'dist/my-app'
